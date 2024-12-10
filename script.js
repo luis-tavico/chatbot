@@ -1,59 +1,100 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const sendButton = document.getElementById("send-button");
-    const userInput = document.getElementById("user-input");
-    const messagesArea = document.getElementById("messages-area");
+// Ruta del modelo ONNX
+const MODEL_URL = 'chatbot_model.onnx';
 
-    const botResponses = {
-        "hola": "¡Hola! ¿En que puedo ayudarte?",
-        "ayuda": "Claro, dime que necesitas.",
-        "gracias": "¡De nada! Siempre estoy aqui para ayudarte.",
-        "adios": "Adios, ¡que tengas un buen dia!",
-        "default": "No estoy seguro de como responder a eso, pero sigo aprendiendo."
-    };
+// Diccionario de palabras usado en el modelo
+const vocab = {
+    "hola": 0,
+    "¿cómo": 1,
+    "estás?": 2,
+    "adiós": 3,
+    "¿qué": 4,
+    "es": 5,
+    "tu": 6,
+    "nombre?": 7
+};
 
-    const addMessage = (message, type) => {
-        const messageDiv = document.createElement("div");
-        messageDiv.classList.add("message", type);
+// Cargar el modelo ONNX
+let session;
 
-        const contentDiv = document.createElement("div");
-        contentDiv.classList.add("message-content");
+async function loadModel() {
+    console.log("Cargando modelo...");
+    session = await ort.InferenceSession.create(MODEL_URL);
+    console.log("Modelo cargado exitosamente.");
+}
 
-        const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        contentDiv.innerHTML = `<p>${message}</p><span class="time">${currentTime}</span>`;
+// Tokenizar entrada del usuario
+function tokenize(text) {
+    return text.toLowerCase().split(" ");
+}
 
-        if (type === "received") {
-            const img = document.createElement("img");
-            img.src = "images/bot.png";
-            img.alt = "Bot Image";
-            img.classList.add("message-image");
-            messageDiv.appendChild(img);
-        }
+// Convertir texto a tensor (similar a `text_to_tensor` en PyTorch)
+function textToTensor(text) {
+    const tokens = tokenize(text);
+    const indices = tokens.map(token => vocab[token] || 0); // Usar 0 para palabras desconocidas
+    const tensor = new Float32Array(indices.length);
+    for (let i = 0; i < indices.length; i++) {
+        tensor[i] = indices[i];
+    }
+    return tensor;
+}
 
-        messageDiv.appendChild(contentDiv);
-        messagesArea.appendChild(messageDiv);
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-    };
+// Enviar mensaje y obtener la respuesta del modelo
+async function sendMessage() {
+    const inputElement = document.getElementById('user-input');
+    const userMessage = inputElement.value.trim();
+    if (!userMessage) return;
 
-    const handleSend = () => {
-        const userMessage = userInput.value.trim();
-        if (userMessage) {
-            addMessage(userMessage, "sent");
-            userInput.value = "";
+    addMessageToChatLog("Tu", userMessage, "sent");
+    inputElement.value = ''; // Limpiar campo de entrada
 
-            // Generar respuesta del bot
-            const botMessage = botResponses[userMessage.toLowerCase()] || botResponses["default"];
-            setTimeout(() => {
-                addMessage(botMessage, "received");
-            }, 500); // Simula un retraso de respuesta
-        }
-    };
+    const inputTensor = textToTensor(userMessage);
+    const tensorData = new ort.Tensor('float32', inputTensor, [1, inputTensor.length]);
 
-    sendButton.addEventListener("click", handleSend);
+    try {
+        const result = await session.run({ input: tensorData });
+        const output = result.output.data;
 
-    userInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            handleSend();
-        }
-    });
-});
+        const responseIndex = output.indexOf(Math.max(...output));
+        const responses = [
+            "¡Hola! ¿Cómo estás?",
+            "Estoy bien, gracias por preguntar.",
+            "¡Adiós! Cuídate.",
+            "Soy un chatbot simple."
+        ];
+
+        const botResponse = responses[responseIndex] || "No entiendo tu mensaje.";
+        setTimeout(() => {
+            addMessageToChatLog("Chatbot", botResponse, "received");
+        }, 500); // Simula un retraso en la respuesta
+    } catch (error) {
+        console.error("Error durante la inferencia:", error);
+    }
+}
+
+// Mostrar mensajes en la interfaz
+function addMessageToChatLog(sender, message, type) {
+    const chatLog = document.getElementById('chat-log');
+    const messageDiv = document.createElement("div");
+    messageDiv.classList.add("message", type);
+
+    const contentDiv = document.createElement("div");
+    contentDiv.classList.add("message-content");
+
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    contentDiv.innerHTML = `<p><strong>${sender}:</strong> ${message}</p><span class="time">${currentTime}</span>`;
+
+    if (type === "received") {
+        const img = document.createElement("img");
+        img.src = "images/bot.png";
+        img.alt = "Bot Image";
+        img.classList.add("message-image");
+        messageDiv.appendChild(img);
+    }
+
+    messageDiv.appendChild(contentDiv);
+    chatLog.appendChild(messageDiv);
+    chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// Cargar el modelo al iniciar la página
+window.onload = loadModel;
