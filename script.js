@@ -1,3 +1,4 @@
+
 // Ruta del modelo ONNX
 const MODEL_URL = 'chatbot_model.onnx';
 
@@ -10,7 +11,18 @@ const vocab = {
     "¿cual": 4,
     "es": 5,
     "tu": 6,
-    "nombre?": 7
+    "nombre?": 7,
+    "¿que": 8,
+    "haces?": 9,
+    "python?": 10,
+    "cuentame": 11,
+    "un": 12,
+    "chiste": 13,
+    "dia": 14,
+    "hoy?": 15,
+    "gracias": 16,
+    "¿puedes": 17,
+    "ayudarme?": 18,
 };
 
 // Cargar el modelo ONNX
@@ -27,10 +39,10 @@ function tokenize(text) {
     return text.toLowerCase().split(" ");
 }
 
-// Convertir texto a tensor (similar a `text_to_tensor` en PyTorch)
+// Convertir texto a tensor
 function textToTensor(text) {
     const tokens = tokenize(text);
-    const indices = tokens.map(token => vocab[token] || 0); // Usar 0 para palabras desconocidas
+    const indices = tokens.map(token => vocab[token] || 0);
     const tensor = new Float32Array(indices.length);
     for (let i = 0; i < indices.length; i++) {
         tensor[i] = indices[i];
@@ -38,14 +50,14 @@ function textToTensor(text) {
     return tensor;
 }
 
-// Enviar mensaje y obtener la respuesta del modelo
+// Enviar mensaje y obtener la respuesta
 async function sendMessage() {
     const inputElement = document.getElementById('user-input');
     const userMessage = inputElement.value.trim();
     if (!userMessage) return;
 
     addMessageToChatLog("Tu", userMessage, "sent");
-    inputElement.value = ''; // Limpiar campo de entrada
+    inputElement.value = '';
 
     const inputTensor = textToTensor(userMessage);
     const tensorData = new ort.Tensor('float32', inputTensor, [1, inputTensor.length]);
@@ -58,14 +70,20 @@ async function sendMessage() {
         const responses = [
             "¡Hola! ¿Como estas?",
             "Estoy bien, gracias por preguntar.",
-            "¡Adios! Cuídate.",
-            "Soy un chatbot simple."
-        ];
+            "¡Adios! Cuidate.",
+            "Soy un chatbot simple.",
+            "Estoy aqui para ayudarte.",
+            "Python es un lenguaje de programacion popular.",
+            "¿Por que el libro de matematicas estaba triste? Porque tenia muchos problemas.",
+            "No tengo un calendario, pero puedo ayudarte con otras cosas.",
+            "De nada, estoy para servirte.",
+            "¡Claro! Dime en que necesitas ayuda."
+        ]
 
         const botResponse = responses[responseIndex] || "No entiendo tu mensaje.";
         setTimeout(() => {
             addMessageToChatLog("Chatbot", botResponse, "received");
-        }, 500); // Simula un retraso en la respuesta
+        }, 500);
     } catch (error) {
         console.error("Error durante la inferencia:", error);
     }
