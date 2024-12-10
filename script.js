@@ -4,10 +4,10 @@ const MODEL_URL = 'chatbot_model.onnx';
 // Diccionario de palabras usado en el modelo
 const vocab = {
     "hola": 0,
-    "¿cómo": 1,
-    "estás?": 2,
-    "adiós": 3,
-    "¿qué": 4,
+    "¿como": 1,
+    "estas?": 2,
+    "adios": 3,
+    "¿cual": 4,
     "es": 5,
     "tu": 6,
     "nombre?": 7
@@ -56,9 +56,9 @@ async function sendMessage() {
 
         const responseIndex = output.indexOf(Math.max(...output));
         const responses = [
-            "¡Hola! ¿Cómo estás?",
+            "¡Hola! ¿Como estas?",
             "Estoy bien, gracias por preguntar.",
-            "¡Adiós! Cuídate.",
+            "¡Adios! Cuídate.",
             "Soy un chatbot simple."
         ];
 
